@@ -101,7 +101,7 @@ def main():
       torch.cuda.manual_seed_all(seed)
       
 
-      model = CNN_WS(in_channels=2, out_channels_1=32, out_channels_2=64, output_fc=256, use_bn=True).to(device)
+      model = CNN_WS(in_channels=2, out_channels_1=32, out_channels_2=64, output_fc1=50, output_fc2=25, use_bn=True).to(device)
       #model = Resnetblock(in_channels=2, out_channels_1=64, out_channels_2=64, output_fc=50, kernel_size=3, use_bn=True)
       optimizer = optim.SGD(model.parameters(), lr = 1e-1)
 

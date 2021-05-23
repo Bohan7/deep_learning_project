@@ -44,7 +44,7 @@ class CNN(nn.Module):
 
 # Only weight sharing. 
 class CNN_WS(nn.Module): 
-    def __init__(self, in_channels=2, out_channels_1=32, out_channels_2=64, output_fc=256, use_bn=True):
+    def __init__(self, in_channels=2, out_channels_1=32, out_channels_2=64, output_fc1=50, output_fc2=25, use_bn=True):
         super(CNN_WS,self).__init__()
         
         self.use_bn = use_bn
@@ -52,9 +52,10 @@ class CNN_WS(nn.Module):
         self.conv2 = nn.Conv2d(out_channels_1, out_channels_2, kernel_size=3)
         self.active = nn.ReLU(inplace=True)
         self.pool = nn.MaxPool2d((2,2))
-        self.fc1 = nn.Linear(out_channels_2*5*5, output_fc)
-        self.fc2 = nn.Linear(output_fc, 10)
-        self.fc3 = nn.Linear(20, 2)
+        self.fc1 = nn.Linear(out_channels_2*5*5, output_fc1)
+        self.fc2 = nn.Linear(output_fc1, 10)
+        self.fc3 = nn.Linear(20, output_fc2)
+        self.fc4 = nn.Linear(output_fc2, 2)
 
         
         if self.use_bn:
@@ -84,7 +85,8 @@ class CNN_WS(nn.Module):
         x2_class = self.one_branch(x2)
         
         out = torch.cat((x1_class, x2_class), dim=1)
-        out = self.fc3(out)
+        out = self.active(self.fc3(out))
+        out = self.fc4(out)
         return out, (x1_class, x2_class)
 
 # No weight sharing. No auxiliary loss.
