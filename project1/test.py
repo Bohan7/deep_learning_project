@@ -19,7 +19,8 @@ def standardize(train_data, test_data):
     mean, std = train_data.mean(), train_data.std()
     return (train_data - mean) / std, (test_data - mean) / std
 
-def train_CNN(model, train_input, train_target, test_input, test_target, mini_batch_size, criterion, optimizer, nb_epochs, verbose=True):
+def train_CNN(model, train_input, train_target, test_input, test_target, mini_batch_size, criterion_input, optimizer, nb_epochs, verbose=True):
+  criterion = criterion_input
   loss_values = []
   acc_values = []
 
@@ -41,16 +42,11 @@ def train_CNN(model, train_input, train_target, test_input, test_target, mini_ba
       print('epoch {}:   loss: {}    acc: {}'.format(e, train_loss, acc))
       loss_values.append(train_loss)
       acc_values.append(acc.item())
-    
-    if (e > 5) and ((loss_values[-1] - loss_values[-2]) > 10.0):
-      loss_values = loss_values[:-1] + [loss_values[-2]] * (nb_epochs-len(loss_values[:-1]))
-      acc_values = acc_values[:-1] + [acc[-2]] * (nb_epochs-len(acc_values[:-1]))
-      break
-    
 
   return loss_values, acc_values
 
-def train_Siamese_net(model, train_input, train_target, train_classes, test_input, test_target, test_classes, mini_batch_size, criterion, optimizer, nb_epochs, loss_weight, version=1, verbose=True):
+def train_Siamese_net(model, train_input, train_target, train_classes, test_input, test_target, test_classes, mini_batch_size, criterion_input, optimizer, nb_epochs, loss_weight, version=1, verbose=True):
+  criterion = criterion_input
   loss_values = []
   acc_values = []
 
@@ -75,7 +71,7 @@ def train_Siamese_net(model, train_input, train_target, train_classes, test_inpu
       train_loss += total_loss.item()
 
       
-    
+
     if verbose and (version==1):
       acc = test_Siamese_net(model, test_input, test_target, version=1)
       print('epoch: {}   loss: {}   acc: {}'.format(e, train_loss, acc))
@@ -83,13 +79,9 @@ def train_Siamese_net(model, train_input, train_target, train_classes, test_inpu
       acc = test_Siamese_net(model, test_input, test_target, version=2)
       print('epoch: {}   loss: {}   acc: {}'.format(e, train_loss, acc))
     
-    loss_values.append(train_loss)
-    acc_values.append(acc.item())
-
-    if (e > 5) and ((loss_values[-1] - loss_values[-2]) > 10.0):
-      loss_values = loss_values[:-1] + [loss_values[-2]] * (nb_epochs-len(loss_values[:-1]))
-      acc_values = acc_values[:-1] + [acc_values[-2]] * (nb_epochs-len(acc_values[:-1]))
-      break
+    if verbose:
+      loss_values.append(train_loss)
+      acc_values.append(acc.item())
     
   return loss_values, acc_values
 
@@ -127,7 +119,7 @@ def main():
     test_accuracy = torch.zeros(n_run)
     cross_entropy = nn.CrossEntropyLoss()
 
-    model_names = ['CNN', 'Siamese_version1', 'Siamese_version1_auxiliary_loss', 'Siamese_version2', 'Resnet_block', 'Resnet_block_weight_share', 'Resnet_block_weight_share_aux']
+    model_names = ['CNN', 'Siamese_version1', 'Siamese_version1_auxiliary_loss', 'Siamese_version2', 'Resnet_block', 'Resnet_block_weight_share', 'Resnet_block_weight_share_auxiliary_loss']
 
     models_loss = []
     models_acc = []
@@ -160,12 +152,12 @@ def main():
           print(name)
           model = Siamese_net(in_channels=2, out_channels_1=16, out_channels_2=32, output_fc1=50, output_fc2=25, use_bn=True, version=1).to(device)
           optimizer = optim.SGD(model.parameters(), lr = 1e-1)
-          train_loss, test_acc = train_Siamese_net(model, train_input, train_class, train_digit, test_input, test_class, test_digit, 100, cross_entropy, optimizer, 25, [1,0], version=1)
+          train_loss, test_acc = train_Siamese_net(model, train_input, train_class, train_digit, test_input, test_class, test_digit, 50, cross_entropy, optimizer, 25, [1,0], version=1)
         elif 'Siamese_version1_auxiliary_loss' is name:
           print(name)
-          model = Siamese_net(in_channels=2, out_channels_1=16, out_channels_2=32, output_fc1=50, output_fc2=25, use_bn=True, version=1).to(device)
+          model = Siamese_net(in_channels=2, out_channels_1=16, out_channels_2=32, output_fc1=50, output_fc2=25, use_bn=False, version=1).to(device)
           optimizer = optim.SGD(model.parameters(), lr = 1e-1)
-          train_loss, test_acc = train_Siamese_net(model, train_input, train_class, train_digit, test_input, test_class, test_digit, 100, cross_entropy, optimizer, 25, [1,1], version=1)
+          train_loss, test_acc = train_Siamese_net(model, train_input, train_class, train_digit, test_input, test_class, test_digit, 100, cross_entropy, optimizer, 25, [1,0.75], version=1)
          
         elif 'Siamese_version2' is name:
           print(name)
@@ -175,20 +167,20 @@ def main():
           
         elif 'Resnet_block' is name:
           print(name)
-          model = Resnetblock(in_channels=2, out_channels_1=16, out_channels_2=16, output_fc=80, kernel_size=3, use_bn=True).to(device)
+          model = Resnetblock(in_channels=2, out_channels_1=16, out_channels_2=16, output_fc=80, kernel_size=3, use_bn=False).to(device)
           optimizer = optim.SGD(model.parameters(), lr = 1e-1)
-          train_loss, test_acc = train_CNN(model, train_input, train_class, test_input, test_class, 100, cross_entropy, optimizer, 25)
+          train_loss, test_acc = train_CNN(model, train_input, train_class, test_input, test_class, 50, cross_entropy, optimizer, 25)
         elif 'Resnet_block_weight_share' is name:
           print(name)
           model = Resnetblock_WS(in_channels=2, out_channels_1=16, out_channels_2=16, output_fc=80, kernel_size=3, use_bn=True).to(device)
           optimizer = optim.SGD(model.parameters(), lr = 1e-1)
-          train_loss, test_acc = train_Siamese_net(model, train_input, train_class, train_digit, test_input, test_class, test_digit, 100, cross_entropy, optimizer, 25, [1,0], version=1)
+          train_loss, test_acc = train_Siamese_net(model, train_input, train_class, train_digit, test_input, test_class, test_digit, 50, cross_entropy, optimizer, 25, [1,0], version=1)
          
-        elif 'Resnet_block_weight_share_aux' is name:
+        elif 'Resnet_block_weight_share_auxiliary_loss' is name:
           print(name)
           model =  Resnetblock_WS(in_channels=2, out_channels_1=16, out_channels_2=16, output_fc=80, kernel_size=3, use_bn=True).to(device)
           optimizer = optim.SGD(model.parameters(), lr = 1e-1)
-          train_loss, test_acc = train_Siamese_net(model, train_input, train_class, train_digit, test_input, test_class, test_digit, 100, cross_entropy, optimizer, 25, [1,1], version=1)
+          train_loss, test_acc = train_Siamese_net(model, train_input, train_class, train_digit, test_input, test_class, test_digit, 200, cross_entropy, optimizer, 25, [1,0.5], version=1)
 
         if i==0:
           total_params = sum(p.numel() for p in model.parameters())
@@ -200,11 +192,7 @@ def main():
 
       models_loss.append(runs_loss)
       models_acc.append(runs_accuracy)
-      
 
-      #mean = test_accuracy.mean().item()
-      #std = test_accuracy.std().item()
-      #print(f'Test accuracy: {mean:.2f} +- {std:.2f}')
     plot_train_loss_test_accuracy(models_loss, models_acc, model_names)
 
 

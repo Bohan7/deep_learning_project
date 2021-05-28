@@ -14,7 +14,7 @@ from visualise import plot_train_loss_test_accuracy
 
 import matplotlib.pyplot as plt
 from dlc_practical_prologue import generate_pair_sets
-from train import standardize, train_CNN, train_Siamese_net, test_CNN, test_Siamese_net
+from test import standardize, train_CNN, train_Siamese_net, test_CNN, test_Siamese_net
 
 def cross_validate(model_name, model, train_input, train_target, train_classes, sup_param_range):
   cuda = torch.cuda.is_available()
@@ -32,14 +32,6 @@ def cross_validate(model_name, model, train_input, train_target, train_classes, 
     params_range = [(lr, mini_batch_size, use_bn, weight) for lr in lr_range for mini_batch_size in mini_batch_size_range for use_bn in use_bn_range for weight in weight_range]
   else:
     params_range = [(lr, mini_batch_size, use_bn) for lr in lr_range for mini_batch_size in mini_batch_size_range for use_bn in use_bn_range]
-
-  #if ('CNN' in model_name) or ('Resnet' in model_name):
-  ##  output_fc_range = sup_param_range['output_fc_range']
-  #  params_range = [(lr, mini_batch_size, out_channels_1, out_channels_2, output_fc, use_bn) for lr in lr_range for mini_batch_size in mini_batch_size_range for out_channels_1 in out_channels_1_range for out_channels_2 in out_channels_2_range for output_fc in output_fc_range for use_bn in use_bn_range]
-  #elif 'Siamese' in model_name:
-  #  output_fc1_range = sup_param_range['output_fc1_range']
-  #  output_fc1_range = sup_param_range['output_fc2_range']
-  #  params_range = [(lr, mini_batch_size, out_channels_1, out_channels_2, output_fc1, output_fc2, use_bn) for lr in lr_range for mini_batch_size in mini_batch_size_range for out_channels_1 in out_channels_1_range for out_channels_2 in out_channels_2_range for output_fc1 in output_fc1_range for output_fc2 in output_fc2_range for use_bn in use_bn_range]
 
   # use 5-fold cross validation
   n_fold = 5
@@ -71,16 +63,16 @@ def cross_validate(model_name, model, train_input, train_target, train_classes, 
       val_set_classes = train_classes[i*fold_size : (i+1)*fold_size]
 
       if ('weight_share' in model_name) or (model_name is 'Siamese_version1'):
-        train_Siamese_net(net, train_set, train_set_target, train_set_classes, 100, cross_entropy, optimizer, 25, [1,0], version=1, verbose=False)
+        train_Siamese_net(net, train_set, train_set_target, train_set_classes, None, None, None, 100, cross_entropy, optimizer, 25, [1,0], version=1, verbose=False)
         val_acc.append(test_Siamese_net(net, val_set, val_set_target, version=1))
       elif 'auxiliary' in model_name:
-        train_Siamese_net(net, train_set, train_set_target, train_set_classes, 100, cross_entropy, optimizer, 25, params[3], version=1, verbose=False)
+        train_Siamese_net(net, train_set, train_set_target, train_set_classes, None, None, None, 100, cross_entropy, optimizer, 25, params[3], version=1, verbose=False)
         val_acc.append(test_Siamese_net(net, val_set, val_set_target, version=1))
       elif model_name is 'Siamese_version2':
-        train_Siamese_net(net, train_set, train_set_target, train_set_classes, 100, cross_entropy, optimizer, 25, [0,1], version=2, verbose=False)
+        train_Siamese_net(net, train_set, train_set_target, train_set_classes, None, None, None, 100, cross_entropy, optimizer, 25, [0,1], version=2, verbose=False)
         val_acc.append(test_Siamese_net(net, val_set, val_set_target, version=2))
       else:
-        train_CNN(net, train_set, train_set_target, 100, cross_entropy, optimizer, 25, verbose=False)
+        train_CNN(net, train_set, train_set_target, None, None, 100, cross_entropy, optimizer, 25, verbose=False)
         val_acc.append(test_CNN(net, val_set, val_set_target))
 
     
@@ -88,9 +80,9 @@ def cross_validate(model_name, model, train_input, train_target, train_classes, 
 
     # print validation result for each combination of superparameters
     if 'auxiliary' in model_name:
-      print("for lr: {}, mini_batch_size : {}, use_bn:{}, weight : {}, validation accuracy is {}".format(params[0], params[1], params[2], params[3], float(sum(val_acc) / n_fold)))
+      print("lr: {}, mini_batch_size : {}, use_bn:{}, weight : {}, validation accuracy is {}".format(params[0], params[1], params[2], params[3], float(sum(val_acc) / n_fold)))
     else:
-      print("for lr: {}, mini_batch_size : {}, use_bn: {}, validation accuracy is {}".format(params[0], params[1], params[2], float(sum(val_acc) / n_fold)))
+      print("lr: {}, mini_batch_size : {}, use_bn: {}, validation accuracy is {}".format(params[0], params[1], params[2], float(sum(val_acc) / n_fold)))
         
     
 
@@ -101,9 +93,9 @@ def cross_validate(model_name, model, train_input, train_target, train_classes, 
 
   # print the optimal parameters found by cross validation
   if 'auxiliary' in model_name:
-      print("Best parameter: for lr: {}, mini_batch_size : {}, use_bn:{}, weight : {}, validation accuracy is {}".format(opt_param[0], opt_param[1], opt_param[2], opt_param[3], opt_val_acc.item()))
+      print("Best parameter: for {}  lr: {}, mini_batch_size : {}, use_bn:{}, weight : {}, validation accuracy is {}".format(model_name,opt_param[0], opt_param[1], opt_param[2], opt_param[3], opt_val_acc.item()))
   else:
-      print("Best parameter: for lr: {}, mini_batch_size : {}, use_bn: {}, validation accuracy is {}".format(opt_param[0], opt_param[1], opt_param[2], opt_val_acc.item()))
+      print("Best parameter: for {}  lr: {}, mini_batch_size : {}, use_bn: {}, validation accuracy is {}".format(model_name, opt_param[0], opt_param[1], opt_param[2], opt_val_acc.item()))
 
   return opt_param
 
@@ -128,7 +120,7 @@ def main():
     
     train_input, test_input = standardize(train_input, test_input)
 
-    model_names = ['CNN', 'Siamese_version1', 'Siamese_version1_auxiliary_loss', 'Siamese_version2', 'Resnet_block', 'Resnet_block_weight_share', 'Resnet_block_weight_share_aux']
+    model_names = ['CNN', 'Siamese_version1', 'Siamese_version1_auxiliary_loss', 'Siamese_version2', 'Resnet_block', 'Resnet_block_weight_share', 'Resnet_block_weight_share_auxiliary_loss']
     sup_param_cv_range = {'lr_range' : [1e-1, 1e-2, 1e-3, 1e-4],
                    'mini_batch_size_range':[50, 100, 200],
                    'use_bn':[True, False],

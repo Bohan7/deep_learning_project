@@ -15,11 +15,11 @@ class CNN(nn.Module):
         super(CNN,self).__init__()
         
         self.use_bn = use_bn
-        self.conv1 = nn.Conv2d(in_channels, out_channels_1, kernel_size=5)
-        self.conv2 = nn.Conv2d(out_channels_1, out_channels_2, kernel_size=5)
+        self.conv1 = nn.Conv2d(in_channels, out_channels_1, kernel_size=3)
+        self.conv2 = nn.Conv2d(out_channels_1, out_channels_2, kernel_size=3)
         self.active = nn.ReLU(inplace=True)
         self.pool = nn.MaxPool2d((2,2))
-        self.fc1 = nn.Linear(out_channels_2*3*3, output_fc)
+        self.fc1 = nn.Linear(out_channels_2*5*5, output_fc)
         self.fc2 = nn.Linear(output_fc, 2)
 
         
@@ -56,7 +56,6 @@ class Siamese_net(nn.Module):
         self.pool = nn.MaxPool2d((2,2))
         self.fc1 = nn.Linear(out_channels_2*5*5, output_fc1)
         self.fc2 = nn.Linear(output_fc1, 10)
-        #self.fc3 = nn.Linear(20, 2)
         self.fc3 = nn.Linear(20, output_fc2)
         self.fc4 = nn.Linear(output_fc2, 2)
 
@@ -89,14 +88,13 @@ class Siamese_net(nn.Module):
         
         if self.version == 1:
           out = torch.cat((x1_class, x2_class), dim=1)
-          out = self.active(self.fc3(out))
+          out = self.active(self.fc3(self.active(out)))
           out = self.fc4(out)
         elif self.version == 2:
           _, predicted_digit1 = torch.max(x1_class, 1)
           _, predicted_digit2 = torch.max(x2_class, 1)
           out = (predicted_digit1 <= predicted_digit2).float()
-          #print(out.size())
-        #out = self.fc3(out)
+
         return out, (x1_class, x2_class)
 
 # No weight sharing. No auxiliary loss.
@@ -187,7 +185,7 @@ class Resnetblock_WS(nn.Module):
         x2_class = self.one_branch(x2)
         
         out = torch.cat((x1_class, x2_class), dim=1)
-        out = self.fc3(out)
+        out = self.fc3(self.active(out))
 
         return out, (x1_class, x2_class)
 
